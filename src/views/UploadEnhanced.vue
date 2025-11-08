@@ -917,7 +917,6 @@ Medan,2020,77.67,420000,6100000`
       removeFile,
       formatFileSize,
       downloadSample,
-      downloadExcelSample,
       loadSampleData,
       validateAndProcess,
       resetForm
