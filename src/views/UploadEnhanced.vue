@@ -85,7 +85,7 @@
                   📊 Download Template Excel
                 </button>
                 <button @click="loadSampleData" class="btn btn-info">
-                  📂 Gunakan Data Sample
+                  📂 Download Data Sample
                 </button>
               </div>
             </div>
@@ -493,6 +493,7 @@
 import { ref, reactive, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import apiService from '../services/apiService.js'
+import { API_BASE_URL } from '@/utils/constants'
 
 export default {
   name: 'UploadEnhanced',
@@ -797,35 +798,30 @@ Atau gunakan template CSV yang tersedia.`)
     }
 
     const loadSampleData = async () => {
+      const apiUrl = `${API_BASE_URL}/sample-excel/` 
+
       try {
-        // Load the sample data file from backend
-        const response = await fetch('/backend/sample_data_indonesia.csv')
-        const text = await response.text()
+        const response = await fetch(apiUrl)
+        console.log(response)
+        if (!response.ok) {
+          throw new Error(`Gagal mengunduh file: ${response.statusText}`)
+        }
+
+        const blob = await response.blob()
+        const url = window.URL.createObjectURL(blob)
+        const a = document.createElement('a')
         
-        // Create a file object from the text
-        const blob = new Blob([text], { type: 'text/csv' })
-        const file = new File([blob], 'sample_data_indonesia.csv', { type: 'text/csv' })
+        a.href = url
+        a.download = 'sample_data_indonesia.csv'
         
-        validateAndSetFile(file)
-        uploadSuccess.value = 'Data sample berhasil dimuat'
+        document.body.appendChild(a)
+        a.click()
+        
+        document.body.removeChild(a)
+        window.URL.revokeObjectURL(url)
+
       } catch (error) {
-        // Fallback to creating sample data directly
-        const sampleData = `kabupaten/kota,tahun,ipm,garis_kemiskinan,pengeluaran_per_kapita
-Jakarta Pusat,2016,79.32,540000,7800000
-Jakarta Pusat,2017,79.78,560000,8100000
-Jakarta Pusat,2018,80.45,580000,8400000
-Jakarta Utara,2016,78.91,540000,7200000
-Jakarta Utara,2017,79.45,560000,7500000
-Jakarta Utara,2018,79.98,580000,7800000
-Surabaya,2016,77.45,380000,5800000
-Surabaya,2017,77.89,400000,6100000
-Surabaya,2018,78.34,420000,6400000`
-        
-        const blob = new Blob([sampleData], { type: 'text/csv' })
-        const file = new File([blob], 'sample_data_long.csv', { type: 'text/csv' })
-        
-        validateAndSetFile(file)
-        uploadSuccess.value = 'Data sample berhasil dimuat'
+        console.error('Error saat mengunduh file sample:', error)
       }
     }
 
