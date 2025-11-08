@@ -798,7 +798,7 @@ Atau gunakan template CSV yang tersedia.`)
     }
 
     const loadSampleData = async () => {
-      const apiUrl = `${API_BASE_URL}sample-excel/` 
+      const apiUrl = `${API_BASE_URL}clustering/sample-excel/` 
 
       try {
         const response = await fetch(apiUrl)
