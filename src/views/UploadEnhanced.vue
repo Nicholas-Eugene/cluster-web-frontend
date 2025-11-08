@@ -81,9 +81,6 @@
                 <button @click="downloadSample" class="btn btn-secondary">
                   📥 Download Template CSV
                 </button>
-                <button @click="downloadExcelSample" class="btn btn-secondary">
-                  📊 Download Template Excel
-                </button>
                 <button @click="loadSampleData" class="btn btn-info">
                   📂 Download Data Sample
                 </button>
@@ -762,39 +759,6 @@ Medan,2020,77.67,420000,6100000`
       a.click()
       document.body.removeChild(a)
       window.URL.revokeObjectURL(url)
-    }
-
-
-    const downloadExcelSample = async () => {
-      try {
-        // Try to download the sample Excel file from backend
-        const response = await fetch('/backend/sample_data_indonesia.xlsx')
-        
-        if (response.ok) {
-          const blob = await response.blob()
-          const url = window.URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = 'template_dataset_indonesia.xlsx'
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          window.URL.revokeObjectURL(url)
-        } else {
-          throw new Error('File not found')
-        }
-      } catch (error) {
-        // Fallback: show message to create Excel manually
-        alert(`Template Excel tidak tersedia untuk download otomatis.
-        
-Silakan buat file Excel dengan struktur berikut:
-- Kolom A: kabupaten/kota
-- Kolom B-J: imp_2016, ipm_2017, ..., ipm_2024
-- Kolom K-S: pengeluaran_2016, pengeluaran_2017, ..., pengeluaran_2024
-- Kolom T-AB: garis_kemiskinan_2016, garis_kemiskinan_2017, ..., garis_kemiskinan_2024
-
-Atau gunakan template CSV yang tersedia.`)
-      }
     }
 
     const loadSampleData = async () => {
