@@ -316,7 +316,7 @@ const apiService = {
       }
       
       const response = await axios.post(
-        `${API_BASE_URL}/clustering/download-pdf/`,
+        `${API_BASE_URL}clustering/download-pdf/`,
         { clustering_results: formattedData },
         { 
           responseType: 'blob',

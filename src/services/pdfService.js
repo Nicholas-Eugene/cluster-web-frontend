@@ -16,7 +16,7 @@ export const pdfService = {
   async downloadPDF(sessionId) {
     try {
       const response = await axios.get(
-        `${API_BASE_URL}/clustering/download-pdf/${sessionId}/`,
+        `${API_BASE_URL}clustering/download-pdf/${sessionId}/`,
         {
           responseType: 'blob',
           timeout: 120000, // 2 minutes timeout for PDF generation
