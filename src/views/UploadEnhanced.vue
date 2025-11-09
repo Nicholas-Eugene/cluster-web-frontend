@@ -376,7 +376,6 @@
                 Rekomendasi: <strong>5-10</strong> untuk hasil yang seimbang
               </small>
             </div>
-
             <div class="form-group">
               <label class="form-label">
                 <span class="label-icon">📊</span>
@@ -410,63 +409,26 @@
                 Rekomendasi: <strong>0.05</strong> (default, cocok untuk kebanyakan data)
               </small>
             </div>
-
-            <div class="form-group">
-              <label class="form-label">
-                <span class="label-icon">📏</span>
-                Minimum Cluster Size (Ukuran Cluster Minimum)
-                <span class="tooltip-container">
-                  <span class="info-icon">ℹ️</span>
-                  <div class="tooltip-content">
-                    <strong>Apa artinya?</strong>
-                    <p>Persentase minimum dari total data yang harus ada dalam satu kelompok agar dianggap valid.</p>
-                    <strong>Penjelasan Sederhana:</strong>
-                    <ul>
-                      <li><strong>0.05 (5%):</strong> Kelompok minimal berisi 5% dari total daerah</li>
-                      <li><strong>0.10 (10%):</strong> Kelompok minimal berisi 10% dari total daerah</li>
-                    </ul>
-                    <strong>Contoh:</strong>
-                    <p>Jika ada 100 daerah dan nilai 0.05, maka kelompok harus minimal berisi 5 daerah.</p>
-                    <p><strong>Tip:</strong> Gunakan 0.05 untuk memperbolehkan kelompok kecil, atau 0.10 untuk hanya kelompok besar.</p>
-                  </div>
-                </span>
-              </label>
-              <input 
-                type="number" 
-                v-model.number="parameters.minClusterSize"
-                class="form-input"
-                min="0.01"
-                max="0.5"
-                step="0.01"
-                placeholder="Contoh: 0.05"
-              >
-              <small class="form-help">
-                <span class="help-icon">📌</span>
-                Rekomendasi: <strong>0.05 (5%)</strong> untuk fleksibilitas yang baik
-              </small>
-            </div>
-          </div>
-          
-          <div class="optics-summary">
-            <div class="summary-header">💡 Panduan Cepat:</div>
-            <div class="summary-grid">
-              <div class="summary-item">
-                <strong>Data Kecil (< 50 daerah):</strong>
-                <span>Min Samples: 3-5 | Xi: 0.05 | Min Size: 0.05</span>
-              </div>
-              <div class="summary-item">
-                <strong>Data Sedang (50-200 daerah):</strong>
-                <span>Min Samples: 5-10 | Xi: 0.05 | Min Size: 0.05</span>
-              </div>
-              <div class="summary-item">
-                <strong>Data Besar (> 200 daerah):</strong>
-                <span>Min Samples: 10-15 | Xi: 0.05-0.10 | Min Size: 0.05</span>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
+      <div class="optics-summary">
+        <div class="summary-header">💡 Panduan Cepat:</div>
+        <div class="summary-grid">
+          <div class="summary-item">
+            <strong>Data Kecil (< 50 daerah):</strong>
+            <span>Min Samples: 3-5</span>
+          </div>
+          <div class="summary-item">
+            <strong>Data Sedang (50-200 daerah):</strong>
+            <span>Min Samples: 5-10</span>
+          </div>
+          <div class="summary-item">
+            <strong>Data Besar (> 200 daerah):</strong>
+            <span>Min Samples: 10-15</span>
+          </div>
+        </div>
+      </div>
       <!-- Action Buttons -->
       <div class="actions">
         <button 
@@ -481,6 +443,7 @@
         <button @click="resetForm" class="btn btn-secondary btn-lg">
           🔄 Reset Form
         </button>
+        </div>
       </div>
     </div>
   </div>
@@ -848,7 +811,7 @@ Medan,2020,77.67,420000,6100000`
         } else if (selectedAlgorithm.value === 'optics') {
           formData.append('min_samples', parameters.minSamples)
           formData.append('xi', parameters.xi)
-          formData.append('min_cluster_size', parameters.minClusterSize)
+          formData.append('min_cluster_size', 0.05)
         }
 
         const response = await apiService.uploadAndProcess(formData)
