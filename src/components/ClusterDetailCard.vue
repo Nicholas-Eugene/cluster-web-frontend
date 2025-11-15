@@ -10,7 +10,7 @@
         :style="{ borderColor: getClusterColor(index) }"
       >
         <div class="tab-color" :style="{ backgroundColor: getClusterColor(index) }"></div>
-        {{ cluster.interpretation?.label || `Cluster ${cluster.id}` }} ({{ cluster.size }})
+        {{ `Cluster ${cluster.id}` }} ({{ cluster.size }})
       </button>
     </div>
     
@@ -253,10 +253,8 @@ export default {
     // Get display label for cluster (handle noise cluster from OPTICS)
     const getClusterLabel = (cluster) => {
       if (!cluster) return 'Unknown'
-      if (cluster.id === -1 || cluster.id === '-1') {
-        return '🔸 Noise (Outliers)'
-      }
-      return cluster.interpretation?.label || `Cluster ${cluster.id}`
+      if (cluster.id === -1 || cluster.id === '-1') return 'Noise (Outliers)'
+      return `Cluster ${cluster.id}`
     }
 
     // Check if cluster is active (handles type coercion properly)
@@ -392,7 +390,7 @@ export default {
     const showingRange = computed(() => {
       if (filteredMembers.value.length === 0) return 'Tidak ada data'
       if (itemsPerPage.value === -1) {
-        return `Menampilkan semua ${filteredMembers.value.length} daerah`
+        return 'Menampilkan semua ${filteredMembers.value.length} daerah'
       }
       const start = (currentPage.value - 1) * itemsPerPage.value + 1
       const end = Math.min(start + itemsPerPage.value - 1, filteredMembers.value.length)

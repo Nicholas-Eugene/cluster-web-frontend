@@ -1,7 +1,22 @@
 <template>
   <div class="scatter-plot-container">
     <div class="chart-header">
-      <h3>{{ title }}</h3>
+      <div class="chart-title-group">
+        <h3>{{ title }}</h3>
+        <div class="chart-hint">
+          <span class="hint-icon">💡</span>
+          <div class="hint-content">
+            <strong>Tentang Scatter Plot:</strong>
+            <p>Scatter plot menampilkan hubungan antara dua variabel untuk setiap daerah:</p>
+            <ul>
+              <li><strong>Titik-titik:</strong> Setiap titik mewakili satu daerah</li>
+              <li><strong>Warna:</strong> Menunjukkan cluster/kelompok daerah tersebut</li>
+              <li><strong>Posisi:</strong> Menunjukkan nilai dari dua variabel yang dipilih</li>
+            </ul>
+            <p class="hint-tip">💡 <strong>Cara Membaca:</strong> Daerah dengan warna sama memiliki karakteristik serupa. Titik yang berdekatan menunjukkan nilai yang mirip.</p>
+          </div>
+        </div>
+      </div>
       <div class="chart-controls">
         <select v-model="selectedXAxis" @change="updateChart" class="axis-select">
           <option value="ipm">IPM</option>
@@ -50,34 +65,16 @@ export default {
     const selectedXAxis = ref('ipm')
     const selectedYAxis = ref('garis_kemiskinan')
 
-    // Consistent cluster colors matching the design system
     const colors = [
-      '#667eea', // Purple - Primary
-      '#48bb78', // Green - Success
-      '#ed8936', // Orange - Warning
-      '#4299e1', // Blue - Info
-      '#f56565', // Red - Danger
-      '#38b2ac', // Teal
-      '#9f7aea', // Purple Light
-      '#ecc94b', // Yellow
-      '#f687b3', // Pink
-      '#4fd1c5', // Cyan
+      '#667eea', '#48bb78', '#ed8936', '#4299e1', '#f56565',
+      '#38b2ac', '#9f7aea', '#ecc94b', '#f687b3', '#4fd1c5',
     ]
 
-    const getClusterColor = (index) => {
-      return colors[index % colors.length]
-    }
+    const getClusterColor = (index) => colors[index % colors.length]
     
-    // Safe cluster label getter (handles noise clusters and object interpretation)
     const getClusterLabel = (cluster) => {
       if (!cluster) return 'Unknown'
-      if (cluster.id === -1 || cluster.id === '-1') {
-        return 'Noise (Outliers)'
-      }
-      // Ensure we get a clean string, not an object
-      if (cluster.interpretation && cluster.interpretation.label) {
-        return String(cluster.interpretation.label)
-      }
+      if (cluster.id === -1 || cluster.id === '-1') return 'Noise (Outliers)'
       return `Cluster ${cluster.id}`
     }
 
@@ -103,35 +100,12 @@ export default {
 
     const createChart = async () => {
       try {
-        // Early validation - check if component is still mounted
-        if (!chartCanvas.value) {
-          console.warn('Chart canvas ref is null, component may be unmounted')
-          return
-        }
-        
-        // Check if we have data to display
-        if (!props.clusters || props.clusters.length === 0) {
-          console.warn('No cluster data available for chart')
-          return
-        }
+        if (!chartCanvas.value) return
+        if (!props.clusters || props.clusters.length === 0) return
 
-        // Wait for DOM to be fully ready
         await nextTick()
+        if (!chartCanvas.value) return
         
-        // Re-validate after nextTick - component might have unmounted
-        if (!chartCanvas.value) {
-          console.warn('Chart canvas became null after nextTick')
-          return
-        }
-        
-        // Check if canvas is actually in the DOM and visible
-        if (!chartCanvas.value.offsetParent && chartCanvas.value.style.display !== 'none') {
-          console.warn('Canvas not visible in DOM, retrying...')
-          setTimeout(() => createChart(), 200)
-          return
-        }
-        
-        // Destroy existing chart safely
         if (chart.value) {
           try {
             if (typeof chart.value.destroy === 'function') {
@@ -143,16 +117,9 @@ export default {
           chart.value = null
         }
         
-        // Additional wait to ensure canvas is stable
         await new Promise(resolve => setTimeout(resolve, 50))
+        if (!chartCanvas.value) return
         
-        // Final validation before getting context
-        if (!chartCanvas.value) {
-          console.warn('Canvas became null during chart creation')
-          return
-        }
-        
-        // Get context with comprehensive validation
         let ctx
         try {
           ctx = chartCanvas.value.getContext('2d')
@@ -161,26 +128,16 @@ export default {
           return
         }
         
-        if (!ctx || !ctx.canvas) {
-          console.warn('Invalid canvas context')
-          return
-        }
+        if (!ctx || !ctx.canvas) return
         
-        // Ensure canvas has proper dimensions
         const canvas = ctx.canvas
         if (canvas.width === 0 || canvas.height === 0) {
-          console.warn('Canvas has zero dimensions, retrying...')
           setTimeout(() => createChart(), 200)
           return
         }
         
-        // Check if canvas is still attached to DOM
-        if (!document.contains(canvas)) {
-          console.warn('Canvas is not attached to DOM')
-          return
-        }
+        if (!document.contains(canvas)) return
       
-      // Prepare datasets
       const datasets = props.clusters.map((cluster, index) => {
         const data = cluster.members.map(member => ({
           x: member[selectedXAxis.value],
@@ -189,7 +146,6 @@ export default {
           membership: member.membership || 1.0
         }))
 
-        // Ensure label is always a clean string (no objects, no special chars)
         const clusterLabel = cluster.interpretation?.label 
           ? String(cluster.interpretation.label) 
           : `Cluster ${cluster.id}`
@@ -201,7 +157,6 @@ export default {
           borderColor: '#ffffff',
           borderWidth: 2,
           pointRadius: (ctx) => {
-            // Size based on membership for FCM
             const membership = ctx.parsed?.membership || 1.0
             return Math.max(4, membership * 8)
           },
@@ -217,29 +172,18 @@ export default {
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          // Disable animations to prevent timing issues
-          animation: {
-            duration: 0
-          },
-          // Disable hover animations
-          hover: {
-            animationDuration: 0
-          },
-          // Disable responsiveAnimationDuration
+          animation: { duration: 0 },
+          hover: { animationDuration: 0 },
           responsiveAnimationDuration: 0,
           plugins: {
             title: {
               display: true,
               text: `${formatAxisLabel(selectedXAxis.value)} vs ${formatAxisLabel(selectedYAxis.value)}`
             },
-            legend: {
-              display: false // We'll use custom legend
-            },
+            legend: { display: false },
             tooltip: {
               callbacks: {
-                title: (context) => {
-                  return context[0].raw.label
-                },
+                title: (context) => context[0].raw.label,
                 label: (context) => {
                   const point = context.raw
                   const lines = [
@@ -256,26 +200,12 @@ export default {
           },
           scales: {
             x: {
-              title: {
-                display: true,
-                text: formatAxisLabel(selectedXAxis.value)
-              },
-              ticks: {
-                callback: function(value) {
-                  return formatValue(value, selectedXAxis.value)
-                }
-              }
+              title: { display: true, text: formatAxisLabel(selectedXAxis.value) },
+              ticks: { callback: function(value) { return formatValue(value, selectedXAxis.value) } }
             },
             y: {
-              title: {
-                display: true,
-                text: formatAxisLabel(selectedYAxis.value)
-              },
-              ticks: {
-                callback: function(value) {
-                  return formatValue(value, selectedYAxis.value)
-                }
-              }
+              title: { display: true, text: formatAxisLabel(selectedYAxis.value) },
+              ticks: { callback: function(value) { return formatValue(value, selectedYAxis.value) } }
             }
           },
           interaction: {
@@ -306,24 +236,11 @@ export default {
     let isUpdating = false
     
     const updateChart = () => {
-      // Prevent multiple simultaneous updates
-      if (isUpdating) {
-        console.warn('Chart update already in progress, skipping')
-        return
-      }
+      if (isUpdating) return
+      if (updateTimeout) clearTimeout(updateTimeout)
       
-      // Clear any pending updates
-      if (updateTimeout) {
-        clearTimeout(updateTimeout)
-      }
-      
-      // Debounce chart updates with longer delay to prevent rapid recreation
       updateTimeout = setTimeout(async () => {
-        if (!chartCanvas.value) {
-          console.warn('Canvas not available for update')
-          return
-        }
-        
+        if (!chartCanvas.value) return
         isUpdating = true
         try {
           await createChart()
@@ -332,7 +249,7 @@ export default {
         } finally {
           isUpdating = false
         }
-      }, 300) // Increased debounce time
+      }, 300)
     }
 
     onMounted(async () => {
@@ -340,16 +257,11 @@ export default {
     })
 
     onUnmounted(() => {
-      // Clear any pending timeouts
       if (updateTimeout) {
         clearTimeout(updateTimeout)
         updateTimeout = null
       }
-      
-      // Set updating flag to prevent any ongoing operations
       isUpdating = true
-      
-      // Destroy chart safely
       if (chart.value) {
         try {
           if (typeof chart.value.destroy === 'function') {
@@ -360,21 +272,10 @@ export default {
         }
         chart.value = null
       }
-      
-      // Clear canvas reference
       chartCanvas.value = null
     })
 
-    watch(() => props.clusters, (newClusters) => {
-      console.log('📈 ScatterPlot received new clusters:', newClusters)
-      if (newClusters && newClusters.length > 0) {
-        console.log(`ScatterPlot: ${newClusters.length} clusters received`)
-        newClusters.forEach((cluster, index) => {
-          console.log(`  Cluster ${cluster.id}: ${cluster.size} members`)
-        })
-      } else {
-        console.log('ScatterPlot: No clusters received or empty clusters')
-      }
+    watch(() => props.clusters, () => {
       updateChart()
     }, { deep: true })
 
@@ -408,10 +309,125 @@ export default {
   gap: 1rem;
 }
 
+.chart-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
 .chart-header h3 {
   color: #2d3748;
   margin: 0;
   font-size: 1.25rem;
+}
+
+/* Chart Hint Styling */
+.chart-hint {
+  position: relative;
+  display: inline-block;
+}
+
+.hint-icon {
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.hint-icon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.hint-content {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  z-index: 1000;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 400px;
+  max-width: 500px;
+  background: white;
+  color: #2d3748;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  border: 2px solid #667eea;
+  text-align: left;
+}
+
+.hint-content::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -10px;
+  border-width: 10px;
+  border-style: solid;
+  border-color: #667eea transparent transparent transparent;
+}
+
+.chart-hint:hover .hint-content {
+  visibility: visible;
+  opacity: 1;
+}
+
+.hint-content strong {
+  display: block;
+  color: #667eea;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.hint-content p {
+  margin: 0.75rem 0;
+  line-height: 1.6;
+  color: #4a5568;
+}
+
+.hint-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+  color: #4a5568;
+}
+
+.hint-content li {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.hint-content li strong {
+  color: #2d3748;
+  display: inline;
+  font-size: 0.95rem;
+}
+
+.hint-tip {
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+  border-left: 4px solid #4299e1;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.hint-tip strong {
+  color: #2c5282;
+  display: inline;
+  font-size: 0.9rem;
 }
 
 .chart-controls {
@@ -473,6 +489,20 @@ export default {
   
   .chart-legend {
     justify-content: center;
+  }
+  
+  .hint-content {
+    min-width: 280px;
+    max-width: 90vw;
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+  
+  .hint-content::after {
+    left: auto;
+    right: 20px;
+    margin-left: 0;
   }
 }
 </style>

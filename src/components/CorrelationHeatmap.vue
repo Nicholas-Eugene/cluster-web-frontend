@@ -1,14 +1,27 @@
 <template>
   <div class="heatmap-container">
     <div class="heatmap-header">
-      <h3>{{ title }}</h3>
+      <div class="chart-title-group">
+        <h3>{{ title }}</h3>
+        <div class="chart-hint">
+          <span class="hint-icon">💡</span>
+          <div class="hint-content">
+            <strong>Tentang Correlation Heatmap:</strong>
+            <p>Heatmap korelasi menampilkan hubungan antar variabel:</p>
+            <ul>
+              <li><strong>Angka dalam kotak:</strong> Nilai korelasi (-1 hingga 1)</li>
+            </ul>
+            <p class="hint-tip">💡 <strong>Cara Membaca:</strong> Nilai mendekati 1 = hubungan positif kuat. Nilai mendekati -1 = hubungan negatif kuat. Nilai mendekati 0 = tidak ada hubungan.</p>
+          </div>
+        </div>
+      </div>
       <div class="heatmap-controls">
         <div class="cluster-filter">
           <label>Filter Cluster:</label>
           <select v-model="selectedCluster" @change="updateHeatmap">
             <option value="all">Semua Cluster</option>
             <option v-for="cluster in clusters" :key="cluster.id" :value="cluster.id">
-              {{ cluster.interpretation?.label || `Cluster ${cluster.id}` }}
+              {{ `Cluster ${cluster.id}` }}
             </option>
           </select>
         </div>
@@ -177,7 +190,7 @@ export default {
       canvas.style.height = totalHeight + 'px'
       
       // Clear canvas
-      ctx.clearRect(0, 0, size, size)
+      ctx.clearRect(0, 0, totalWidth, totalHeight)
       
       const data = filteredData.value
       if (data.length === 0) {
@@ -185,7 +198,7 @@ export default {
         ctx.fillStyle = '#666'
         ctx.font = '16px Arial'
         ctx.textAlign = 'center'
-        ctx.fillText('No data available', size / 2, size / 2)
+        ctx.fillText('No data available', totalWidth / 2, totalHeight / 2)
         return
       }
       
@@ -230,12 +243,12 @@ export default {
       
       // Draw variable labels
       ctx.fillStyle = '#2d3748'
-      ctx.font = 'bold 16px Arial' // Increased font size
+      ctx.font = 'bold 16px Arial'
       
       // Top labels
       for (let j = 0; j < variables.length; j++) {
         const x = margin.left + j * cellSize + cellSize / 2
-        const y = margin.top - 30 // Increased distance from heatmap
+        const y = margin.top - 30
         ctx.save()
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
@@ -255,7 +268,7 @@ export default {
       ctx.textAlign = 'right'
       ctx.textBaseline = 'middle'
       for (let i = 0; i < variables.length; i++) {
-        const x = margin.left - 25 // Increased distance from heatmap
+        const x = margin.left - 25
         const y = margin.top + i * cellSize + cellSize / 2
         // Add background for better readability
         const textWidth = ctx.measureText(variables[i]).width
@@ -332,10 +345,125 @@ export default {
   gap: 1rem;
 }
 
+.chart-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1;
+}
+
 .heatmap-header h3 {
   color: #2d3748;
   margin: 0;
   font-size: 1.25rem;
+}
+
+/* Chart Hint Styling */
+.chart-hint {
+  position: relative;
+  display: inline-block;
+}
+
+.hint-icon {
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+}
+
+.hint-icon:hover {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.4);
+}
+
+.hint-content {
+  visibility: hidden;
+  opacity: 0;
+  position: absolute;
+  z-index: 1000;
+  bottom: 125%;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 400px;
+  max-width: 500px;
+  background: white;
+  color: #2d3748;
+  padding: 1.5rem;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  border: 2px solid #667eea;
+  text-align: left;
+}
+
+.hint-content::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -10px;
+  border-width: 10px;
+  border-style: solid;
+  border-color: #667eea transparent transparent transparent;
+}
+
+.chart-hint:hover .hint-content {
+  visibility: visible;
+  opacity: 1;
+}
+
+.hint-content strong {
+  display: block;
+  color: #667eea;
+  font-size: 1.1rem;
+  margin-bottom: 0.75rem;
+  font-weight: 700;
+}
+
+.hint-content p {
+  margin: 0.75rem 0;
+  line-height: 1.6;
+  color: #4a5568;
+}
+
+.hint-content ul {
+  margin: 0.75rem 0;
+  padding-left: 1.5rem;
+  color: #4a5568;
+}
+
+.hint-content li {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.hint-content li strong {
+  color: #2d3748;
+  display: inline;
+  font-size: 0.95rem;
+}
+
+.hint-tip {
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+  border-left: 4px solid #4299e1;
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.hint-tip strong {
+  color: #2c5282;
+  display: inline;
+  font-size: 0.9rem;
 }
 
 .heatmap-controls {
@@ -467,6 +595,20 @@ export default {
   .heatmap-info {
     flex-direction: column;
     gap: 0.5rem;
+  }
+  
+  .hint-content {
+    min-width: 280px;
+    max-width: 90vw;
+    left: auto;
+    right: 0;
+    transform: none;
+  }
+  
+  .hint-content::after {
+    left: auto;
+    right: 20px;
+    margin-left: 0;
   }
 }
 </style>

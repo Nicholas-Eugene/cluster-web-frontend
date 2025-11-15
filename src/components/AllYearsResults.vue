@@ -91,14 +91,7 @@
               <div class="metric-tooltip">
                 <span class="tooltip-icon">ℹ️</span>
                 <div class="tooltip-content">
-                  <p><strong>Rentang Nilai:</strong></p>
-                  <ul>
-                    <li>< 1.0 = Sangat Baik ✅</li>
-                    <li>1.0 - 1.5 = Baik 👍</li>
-                    <li>1.5 - 2.0 = Cukup ⚠️</li>
-                    <li>> 2.0 = Perlu Perbaikan ❌</li>
-                  </ul>
-                  <p class="tooltip-desc">Semakin rendah semakin baik. Mengukur rasio jarak dalam cluster vs antar cluster.</p>
+                  <p>Semakin rendah semakin baik. Mengukur rasio jarak dalam cluster vs antar cluster.</p>
                 </div>
               </div>
             </div>
@@ -113,14 +106,7 @@
               <div class="metric-tooltip">
                 <span class="tooltip-icon">ℹ️</span>
                 <div class="tooltip-content">
-                  <p><strong>Rentang Nilai:</strong></p>
-                  <ul>
-                    <li>> 0.7 = Sangat Baik ✅</li>
-                    <li>0.5 - 0.7 = Baik 👍</li>
-                    <li>0.25 - 0.5 = Cukup ⚠️</li>
-                    <li>< 0.25 = Perlu Perbaikan ❌</li>
-                  </ul>
-                  <p class="tooltip-desc">Rentang -1 hingga 1. Semakin tinggi semakin baik. Mengukur seberapa mirip objek dengan clusternya.</p>
+                  <p>Rentang -1 hingga 1. Semakin tinggi semakin baik. Mengukur seberapa mirip objek dengan clusternya.</p>
                 </div>
               </div>
             </div>

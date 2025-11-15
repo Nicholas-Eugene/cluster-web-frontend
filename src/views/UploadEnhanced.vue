@@ -79,7 +79,7 @@
               <p>Download template dataset untuk referensi:</p>
               <div class="download-buttons">
                 <button @click="downloadSample" class="btn btn-secondary">
-                  📥 Download Template CSV
+                  📥 Download Template XLSX
                 </button>
                 <button @click="loadSampleData" class="btn btn-info">
                   📂 Download Data Sample
@@ -246,7 +246,7 @@
               <br>
               <small>Contoh: Data 2016-2021 akan digabung menjadi satu baris per kabupaten/kota dengan kolom ipm_2016, ipm_2017, ..., pengeluaran_per_kapita_2021, lalu di-cluster menjadi grup A,B,C berdasarkan pola/tren sepanjang waktu.</small>
               <br>
-              <small class="mode-note-text"><strong>⚠️ Catatan:</strong> Hasil akan berbeda dengan mode "Per Tahun" karena clustering dilakukan berdasarkan pola multi-tahun, bukan per tahun terpisah.</small>
+              <small class="mode-note-text"><strong>⚠️ Catatan:</strong> Wilayah yang tidak memiliki data di salah satu tahun akan di exclude pada proses klaster, dan Hasil akan berbeda dengan mode "Per Tahun" karena clustering dilakukan berdasarkan pola multi-tahun, bukan per tahun terpisah.</small>
             </div>
           </div>
         </div>
@@ -307,12 +307,7 @@
                 <span class="info-icon">ℹ️</span>
                 <div class="tooltip-content">
                   <strong>Apa itu Jumlah Cluster?</strong>
-                  <p>Ini adalah jumlah kelompok yang ingin Anda buat dari data daerah. Misalnya:</p>
-                  <ul>
-                    <li><strong>3 cluster:</strong> Daerah akan dikelompokkan menjadi "Maju", "Sedang", dan "Berkembang"</li>
-                    <li><strong>4 cluster:</strong> Daerah dikelompokkan menjadi 4 kategori berbeda</li>
-                  </ul>
-                  <p><strong>Tip:</strong> Mulai dengan 3-4 cluster untuk hasil yang mudah diinterpretasi.</p>
+                  <p>Ini adalah jumlah kelompok yang ingin Anda buat dari data daerah.</p>
                 </div>
               </span>
             </label>
@@ -326,7 +321,7 @@
             >
             <small class="form-help">
               <span class="help-icon">📌</span>
-              Pilih antara 2-10 cluster. <strong>Rekomendasi: 3 atau 4 cluster</strong> untuk hasil yang mudah dipahami.
+              Pilih antara 2-10 cluster.
             </small>
           </div>
         </div>
@@ -359,7 +354,6 @@
                       <li><strong>Nilai sedang (5-10):</strong> Balanced, cocok untuk kebanyakan kasus</li>
                       <li><strong>Nilai besar (10-20):</strong> Hanya menemukan kelompok besar dan jelas</li>
                     </ul>
-                    <p><strong>Tip:</strong> Gunakan 5 untuk data dengan puluhan daerah, 10-15 untuk data dengan ratusan daerah.</p>
                   </div>
                 </span>
               </label>
@@ -406,27 +400,9 @@
               >
               <small class="form-help">
                 <span class="help-icon">📌</span>
-                Rekomendasi: <strong>0.05</strong> (default, cocok untuk kebanyakan data)
+                Rekomendasi: <strong>0.1</strong>
               </small>
             </div>
-        </div>
-      </div>
-
-      <div class="optics-summary">
-        <div class="summary-header">💡 Panduan Cepat:</div>
-        <div class="summary-grid">
-          <div class="summary-item">
-            <strong>Data Kecil (< 50 daerah):</strong>
-            <span>Min Samples: 3-5</span>
-          </div>
-          <div class="summary-item">
-            <strong>Data Sedang (50-200 daerah):</strong>
-            <span>Min Samples: 5-10</span>
-          </div>
-          <div class="summary-item">
-            <strong>Data Besar (> 200 daerah):</strong>
-            <span>Min Samples: 10-15</span>
-          </div>
         </div>
       </div>
       <!-- Action Buttons -->
@@ -451,6 +427,7 @@
 
 <script>
 import { ref, reactive, computed, watch } from 'vue'
+import * as XLSX from 'xlsx'
 import { useRouter } from 'vue-router'
 import apiService from '../services/apiService.js'
 import { API_BASE_URL } from '@/utils/constants'
@@ -474,13 +451,13 @@ export default {
 
     const parameters = reactive({
       // FCM parameters
-      numClusters: 3,
+      numClusters: 2,
       fuzzyCoeff: 2.0,
       maxIter: 300,
       tolerance: 0.0001,
       // OPTICS parameters
       minSamples: 5,
-      xi: 0.05,
+      xi: 0.1,
       minClusterSize: 0.05
     })
 
@@ -681,48 +658,50 @@ Pastikan file menggunakan 5 kolom wajib:
     }
 
     const downloadSample = () => {
-      const sampleData = `kabupaten/kota,tahun,ipm,garis_kemiskinan,pengeluaran_per_kapita
-Jakarta Pusat,2016,79.32,540000,7800000
-Jakarta Pusat,2017,79.78,560000,8100000
-Jakarta Pusat,2018,80.45,580000,8400000
-Jakarta Pusat,2019,81.12,600000,8700000
-Jakarta Pusat,2020,81.56,620000,9000000
-Jakarta Utara,2016,78.91,540000,7200000
-Jakarta Utara,2017,79.45,560000,7500000
-Jakarta Utara,2018,79.98,580000,7800000
-Jakarta Utara,2019,80.52,600000,8100000
-Jakarta Utara,2020,81.05,620000,8400000
-Jakarta Barat,2016,81.65,540000,9200000
-Jakarta Barat,2017,82.23,560000,9500000
-Jakarta Barat,2018,82.89,580000,9800000
-Jakarta Barat,2019,83.56,600000,10100000
-Jakarta Barat,2020,84.23,620000,10400000
-Surabaya,2016,77.45,380000,5800000
-Surabaya,2017,77.89,400000,6100000
-Surabaya,2018,78.34,420000,6400000
-Surabaya,2019,78.78,440000,6700000
-Surabaya,2020,79.23,460000,7000000
-Bandung,2016,76.12,350000,5200000
-Bandung,2017,76.67,370000,5500000
-Bandung,2018,77.23,390000,5800000
-Bandung,2019,77.78,410000,6100000
-Bandung,2020,78.34,430000,6400000
-Medan,2016,75.89,340000,4900000
-Medan,2017,76.34,360000,5200000
-Medan,2018,76.78,380000,5500000
-Medan,2019,77.23,400000,5800000
-Medan,2020,77.67,420000,6100000`
+      const sampleData = [
+        ["kabupaten/kota", "tahun", "ipm", "garis_kemiskinan", "pengeluaran_per_kapita"],
+        ["Jakarta Pusat", 2016, 79.32, 540000, 7800000],
+        ["Jakarta Pusat", 2017, 79.78, 560000, 8100000],
+        ["Jakarta Pusat", 2018, 80.45, 580000, 8400000],
+        ["Jakarta Pusat", 2019, 81.12, 600000, 8700000],
+        ["Jakarta Pusat", 2020, 81.56, 620000, 9000000],
+        ["Jakarta Utara", 2016, 78.91, 540000, 7200000],
+        ["Jakarta Utara", 2017, 79.45, 560000, 7500000],
+        ["Jakarta Utara", 2018, 79.98, 580000, 7800000],
+        ["Jakarta Utara", 2019, 80.52, 600000, 8100000],
+        ["Jakarta Utara", 2020, 81.05, 620000, 8400000],
+        ["Jakarta Barat", 2016, 81.65, 540000, 9200000],
+        ["Jakarta Barat", 2017, 82.23, 560000, 9500000],
+        ["Jakarta Barat", 2018, 82.89, 580000, 9800000],
+        ["Jakarta Barat", 2019, 83.56, 600000, 10100000],
+        ["Jakarta Barat", 2020, 84.23, 620000, 10400000],
+        ["Surabaya", 2016, 77.45, 380000, 5800000],
+        ["Surabaya", 2017, 77.89, 400000, 6100000],
+        ["Surabaya", 2018, 78.34, 420000, 6400000],
+        ["Surabaya", 2019, 78.78, 440000, 6700000],
+        ["Surabaya", 2020, 79.23, 460000, 7000000],
+        ["Bandung", 2016, 76.12, 350000, 5200000],
+        ["Bandung", 2017, 76.67, 370000, 5500000],
+        ["Bandung", 2018, 77.23, 390000, 5800000],
+        ["Bandung", 2019, 77.78, 410000, 6100000],
+        ["Bandung", 2020, 78.34, 430000, 6400000],
+        ["Medan", 2016, 75.89, 340000, 4900000],
+        ["Medan", 2017, 76.34, 360000, 5200000],
+        ["Medan", 2018, 76.78, 380000, 5500000],
+        ["Medan", 2019, 77.23, 400000, 5800000],
+        ["Medan", 2020, 77.67, 420000, 6100000],
+      ];
 
-      const blob = new Blob([sampleData], { type: 'text/csv' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = 'template_dataset_indonesia_long.csv'
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
-    }
+      // Convert array ke worksheet
+      const ws = XLSX.utils.aoa_to_sheet(sampleData);
+
+      // Workbook
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Sheet1");
+
+      // Generate file dan download
+      XLSX.writeFile(wb, "template_dataset_indonesia_long.xlsx");
+    };
 
     const loadSampleData = async () => {
       const apiUrl = `${API_BASE_URL}clustering/sample-excel/` 
@@ -739,7 +718,7 @@ Medan,2020,77.67,420000,6100000`
         const a = document.createElement('a')
         
         a.href = url
-        a.download = 'sample_data_indonesia.csv'
+        a.download = 'sample_data_indonesia.xlsx'
         
         document.body.appendChild(a)
         a.click()
