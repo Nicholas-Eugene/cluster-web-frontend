@@ -427,10 +427,10 @@
 
 <script>
 import { ref, reactive, computed, watch } from 'vue'
-import * as XLSX from 'xlsx'
 import { useRouter } from 'vue-router'
 import apiService from '../services/apiService.js'
 import { API_BASE_URL } from '@/utils/constants'
+import * as XLSX from 'xlsx'
 
 export default {
   name: 'UploadEnhanced',
@@ -484,7 +484,7 @@ export default {
       }
     }
 
-    const validateAndSetFile = (file) => {
+    const validateAndSetFile = async (file) => {
       uploadError.value = ''
       uploadSuccess.value = ''
 
@@ -505,13 +505,13 @@ export default {
       }
 
       selectedFile.value = file
-      uploadSuccess.value = 'File berhasil dipilih'
+      uploadSuccess.value = 'File berhasil dipilih, memproses preview...'
       
       // Parse file for preview
       if (fileName.endsWith('.csv')) {
         parseCSVPreview(file)
       } else {
-        parseExcelPreview(file)
+        await parseExcelPreview(file)
       }
     }
 
@@ -602,32 +602,117 @@ export default {
       reader.readAsText(file)
     }
 
-    const parseExcelPreview = (file) => {
-      // For Excel files, we'll show a basic preview without parsing
-      // The actual parsing will be done on the backend
-      const fileName = file.name
-      
-      // Create a mock preview for Excel files showing long format
-      dataPreview.value = {
-        totalRows: 'Unknown (akan diproses di server)',
-        columns: ['kabupaten/kota', 'tahun', 'ipm', 'garis_kemiskinan', 'pengeluaran_per_kapita'],
-        sampleRows: [
-          {
-            'kabupaten/kota': 'Akan ditampilkan setelah upload',
-            'tahun': '...',
-            'ipm': '...',
-            'garis_kemiskinan': '...',
-            'pengeluaran_per_kapita': '...'
+    const parseExcelPreview = async (file) => {
+      try {
+        const arrayBuffer = await file.arrayBuffer()
+        const workbook = XLSX.read(arrayBuffer, { type: 'array' })
+        
+        // Ambil sheet pertama
+        const firstSheetName = workbook.SheetNames[0]
+        const worksheet = workbook.Sheets[firstSheetName]
+        
+        // Convert ke JSON
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+          header: 1,  // Return array of arrays
+          raw: false, // Format numbers as strings
+          defval: ''  // Default value for empty cells
+        })
+        
+        if (jsonData.length < 2) {
+          uploadError.value = 'File Excel harus memiliki minimal 2 baris (header + data)'
+          return
+        }
+        
+        // Get headers (first row)
+        const headers = jsonData[0].map(h => String(h).trim())
+        
+        // Get data rows (skip header)
+        const dataRows = jsonData.slice(1).filter(row => {
+          // Filter out completely empty rows
+          return row.some(cell => cell !== null && cell !== undefined && String(cell).trim() !== '')
+        })
+        
+        if (dataRows.length === 0) {
+          uploadError.value = 'File Excel tidak memiliki data'
+          return
+        }
+        
+        console.log('📊 Excel parsed successfully')
+        console.log('Headers:', headers)
+        console.log('Data rows:', dataRows.length)
+        console.log('Sample data:', dataRows.slice(0, 3))
+        
+        // Validate required columns (case-insensitive)
+        const requiredColumns = ['kabupaten/kota', 'tahun', 'ipm', 'garis_kemiskinan', 'pengeluaran_per_kapita']
+        const normalizedHeaders = headers.map(h => h.toLowerCase().replace(/[\/\s_]/g, ''))
+        
+        const missingColumns = []
+        for (const requiredCol of requiredColumns) {
+          const normalizedRequired = requiredCol.toLowerCase().replace(/[\/\s_]/g, '')
+          const found = normalizedHeaders.some(h => {
+            if (h === normalizedRequired) return true
+            if (normalizedRequired.includes('kabupaten') && (h.includes('kabupaten') || h.includes('kota'))) return true
+            if (normalizedRequired.includes('pengeluaran') && h.includes('pengeluaran') && h.includes('kapita')) return true
+            if (normalizedRequired.includes('kemiskinan') && h.includes('kemiskinan')) return true
+            if (normalizedRequired === 'tahun' && h === 'tahun') return true
+            if (normalizedRequired === 'ipm' && h === 'ipm') return true
+            return false
+          })
+          if (!found) {
+            missingColumns.push(requiredCol)
           }
-        ],
-        years: ['Akan dideteksi dari data'],
-        format: 'long'
+        }
+        
+        if (missingColumns.length > 0) {
+          uploadError.value = `Kolom yang hilang: ${missingColumns.join(', ')}`
+          return
+        }
+        
+        // Extract years from data
+        const tahunIndex = headers.findIndex(h => h.toLowerCase() === 'tahun')
+        const years = new Set()
+        
+        dataRows.forEach(row => {
+          if (row[tahunIndex]) {
+            const year = String(row[tahunIndex]).trim()
+            if (year && !isNaN(year)) {
+              years.add(year)
+            }
+          }
+        })
+        
+        const sortedYears = Array.from(years).sort()
+        
+        console.log('📅 Years found:', sortedYears)
+        
+        // Create sample rows for preview (convert array to object)
+        const sampleRows = dataRows.slice(0, 5).map(row => {
+          const obj = {}
+          headers.forEach((header, index) => {
+            obj[header] = row[index] || ''
+          })
+          return obj
+        })
+        
+        dataPreview.value = {
+          totalRows: dataRows.length,
+          columns: headers,
+          sampleRows: sampleRows,
+          years: sortedYears,
+          format: 'long'
+        }
+        
+        // Auto-select all years for per_year mode
+        if (clusteringMode.value === 'per_year' && sortedYears && sortedYears.length > 0) {
+          selectedYears.value = [...sortedYears]
+        }
+        
+        uploadSuccess.value = `File Excel berhasil diparse! Ditemukan ${dataRows.length} baris data dan ${sortedYears.length} tahun`
+        
+      } catch (error) {
+        console.error('Error parsing Excel:', error)
+        uploadError.value = `Gagal membaca file Excel: ${error.message}`
       }
-      
-      uploadSuccess.value = `File Excel ${fileName} berhasil dipilih. Format akan divalidasi saat upload.
-
-Pastikan file menggunakan 5 kolom wajib:
-- kabupaten/kota, tahun, ipm, garis_kemiskinan, pengeluaran_per_kapita`
     }
 
     const removeFile = () => {
