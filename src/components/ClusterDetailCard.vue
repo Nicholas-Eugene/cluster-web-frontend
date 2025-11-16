@@ -10,7 +10,7 @@
         :style="{ borderColor: getClusterColor(index) }"
       >
         <div class="tab-color" :style="{ backgroundColor: getClusterColor(index) }"></div>
-        {{ `Cluster ${cluster.id}` }} ({{ cluster.size }})
+        Cluster {{ cluster.id }} ({{ cluster.size }})
       </button>
     </div>
     
@@ -63,11 +63,25 @@
                 ✕
               </button>
             </div>
+            
+            <!-- NEW: Province Filter -->
+            <div class="province-filter-box">
+              <label for="province-filter">Filter Provinsi:</label>
+              <select v-model="selectedProvince" id="province-filter" class="province-select">
+                <option value="all">Semua Provinsi</option>
+                <option v-for="province in availableProvinces" :key="province" :value="province">
+                  {{ province }}
+                </option>
+              </select>
+            </div>
+            
             <div class="sort-box">
               <label for="sort-select">Urutkan:</label>
               <select v-model="sortBy" id="sort-select" class="sort-select">
                 <option value="name-asc">Nama (A-Z)</option>
                 <option value="name-desc">Nama (Z-A)</option>
+                <option value="province-asc">Provinsi (A-Z)</option>
+                <option value="province-desc">Provinsi (Z-A)</option>
                 <option value="ipm-asc">IPM (Terendah)</option>
                 <option value="ipm-desc">IPM (Tertinggi)</option>
                 <option value="poverty-asc">Kemiskinan (Terendah)</option>
@@ -92,7 +106,8 @@
         </div>
         
         <div v-if="filteredMembers.length === 0" class="no-results">
-          <p>🔍 Tidak ada daerah yang cocok dengan pencarian "{{ searchQuery }}"</p>
+          <p>🔍 Tidak ada daerah yang cocok dengan filter</p>
+          <button @click="resetFilters" class="btn-reset-filter">Reset Filter</button>
         </div>
         
         <div v-else class="table-container">
@@ -101,6 +116,7 @@
               <tr>
                 <th class="col-no">No</th>
                 <th class="col-name">Kabupaten/Kota</th>
+                <th class="col-province">Provinsi</th>
                 <th class="col-ipm">IPM</th>
                 <th class="col-poverty">Garis Kemiskinan</th>
                 <th class="col-expenditure">Pengeluaran/Kapita</th>
@@ -115,6 +131,9 @@
                 <td class="col-no">{{ (currentPage - 1) * itemsPerPage + index + 1 }}</td>
                 <td class="col-name">
                   <strong>{{ member.kabupaten_kota }}</strong>
+                </td>
+                <td class="col-province">
+                  <span class="province-badge">{{ member.provinsi || 'N/A' }}</span>
                 </td>
                 <td class="col-ipm">{{ member.ipm?.toFixed(2) || 'N/A' }}</td>
                 <td class="col-poverty">{{ formatCurrency(member.garis_kemiskinan) }}</td>
@@ -216,48 +235,38 @@ export default {
   setup(props) {
     const selectedClusterId = ref(null)
     const searchQuery = ref('')
+    const selectedProvince = ref('all')
     const sortBy = ref('name-asc')
     const currentPage = ref(1)
     const itemsPerPage = ref(25)
 
     // Consistent cluster colors matching the design system
     const colors = [
-      '#667eea', // Purple - Primary
-      '#48bb78', // Green - Success
-      '#ed8936', // Orange - Warning
-      '#4299e1', // Blue - Info
-      '#f56565', // Red - Danger
-      '#38b2ac', // Teal
-      '#9f7aea', // Purple Light
-      '#ecc94b', // Yellow
-      '#f687b3', // Pink
-      '#4fd1c5', // Cyan
+      '#667eea', '#48bb78', '#ed8936', '#4299e1', '#f56565',
+      '#38b2ac', '#9f7aea', '#ecc94b', '#f687b3', '#4fd1c5',
     ]
 
     const getClusterColor = (index) => {
       return colors[index % colors.length]
     }
 
-    // Helper to normalize cluster ID (convert to number if possible, handle 0 and -1 properly)
+    // Helper to normalize cluster ID
     const normalizeId = (id) => {
-      // Explicitly handle null/undefined
       if (id === null || id === undefined) return null
-      
-      // Try to convert to number
       const num = Number(id)
-      
-      // Return number if it's valid (including 0 and -1!), otherwise return original
       return isNaN(num) ? id : num
     }
     
-    // Get display label for cluster (handle noise cluster from OPTICS)
+    // Get display label for cluster
     const getClusterLabel = (cluster) => {
       if (!cluster) return 'Unknown'
-      if (cluster.id === -1 || cluster.id === '-1') return 'Noise (Outliers)'
+      if (cluster.id === -1 || cluster.id === '-1') {
+        return '🔸 Noise (Outliers)'
+      }
       return `Cluster ${cluster.id}`
     }
 
-    // Check if cluster is active (handles type coercion properly)
+    // Check if cluster is active
     const isClusterActive = (clusterId) => {
       const normalizedCluster = normalizeId(clusterId)
       const normalizedSelected = normalizeId(selectedClusterId.value)
@@ -267,10 +276,13 @@ export default {
     // Select cluster method
     const selectCluster = (clusterId) => {
       selectedClusterId.value = normalizeId(clusterId)
+      // Reset filters when changing cluster
+      selectedProvince.value = 'all'
+      searchQuery.value = ''
+      currentPage.value = 1
     }
 
     const activeCluster = computed(() => {
-      // Explicitly check for null/undefined, but allow 0
       if (selectedClusterId.value === null || selectedClusterId.value === undefined) {
         return null
       }
@@ -279,13 +291,28 @@ export default {
         return null
       }
       
-      // Find cluster with normalized comparison
       const normalizedSelected = normalizeId(selectedClusterId.value)
       const found = props.clusters.find(cluster => {
         return normalizeId(cluster.id) === normalizedSelected
       })
       
       return found || null
+    })
+
+    // Get available provinces from active cluster
+    const availableProvinces = computed(() => {
+      if (!activeCluster.value || !activeCluster.value.members) {
+        return []
+      }
+
+      const provinces = new Set()
+      activeCluster.value.members.forEach(member => {
+        if (member.provinsi && member.provinsi.trim()) {
+          provinces.add(member.provinsi.trim())
+        }
+      })
+
+      return Array.from(provinces).sort()
     })
 
     // Filtered and sorted members
@@ -306,6 +333,13 @@ export default {
         })
       }
 
+      // Apply province filter
+      if (selectedProvince.value !== 'all') {
+        members = members.filter(member => {
+          return member.provinsi && member.provinsi.trim() === selectedProvince.value
+        })
+      }
+
       // Apply sorting
       members.sort((a, b) => {
         switch (sortBy.value) {
@@ -313,6 +347,10 @@ export default {
             return (a.kabupaten_kota || '').localeCompare(b.kabupaten_kota || '')
           case 'name-desc':
             return (b.kabupaten_kota || '').localeCompare(a.kabupaten_kota || '')
+          case 'province-asc':
+            return (a.provinsi || '').localeCompare(b.provinsi || '')
+          case 'province-desc':
+            return (b.provinsi || '').localeCompare(a.provinsi || '')
           case 'ipm-asc':
             return (a.ipm || 0) - (b.ipm || 0)
           case 'ipm-desc':
@@ -381,16 +419,24 @@ export default {
       }
     }
 
-    // Reset page when search or sort changes
-    watch([searchQuery, sortBy], () => {
+    // Reset page when search, province filter, or sort changes
+    watch([searchQuery, selectedProvince, sortBy], () => {
       currentPage.value = 1
     })
+
+    // Reset filters
+    const resetFilters = () => {
+      searchQuery.value = ''
+      selectedProvince.value = 'all'
+      sortBy.value = 'name-asc'
+      currentPage.value = 1
+    }
 
     // Showing range text
     const showingRange = computed(() => {
       if (filteredMembers.value.length === 0) return 'Tidak ada data'
       if (itemsPerPage.value === -1) {
-        return 'Menampilkan semua ${filteredMembers.value.length} daerah'
+        return `Menampilkan semua ${filteredMembers.value.length} daerah`
       }
       const start = (currentPage.value - 1) * itemsPerPage.value + 1
       const end = Math.min(start + itemsPerPage.value - 1, filteredMembers.value.length)
@@ -404,19 +450,16 @@ export default {
       const current = currentPage.value
 
       if (total <= 7) {
-        // Show all pages if 7 or less
         for (let i = 1; i <= total; i++) {
           pages.push(i)
         }
       } else {
-        // Always show first page
         pages.push(1)
 
         if (current > 3) {
           pages.push('...')
         }
 
-        // Show pages around current page
         const start = Math.max(2, current - 1)
         const end = Math.min(total - 1, current + 1)
 
@@ -428,7 +471,6 @@ export default {
           pages.push('...')
         }
 
-        // Always show last page
         pages.push(total)
       }
 
@@ -444,21 +486,9 @@ export default {
       }).format(value)
     }
 
-    const getInterpretationIcon = (category) => {
-      const icons = {
-        'poor': '⚠️',
-        'prosperous': '✨',
-        'vulnerable': '⚡',
-        'developing': '📈',
-        'middle': '🔄'
-      }
-      return icons[category] || '📊'
-    }
-
-    // Initialize with first cluster - always select first cluster when clusters change
+    // Initialize with first cluster
     watch(() => props.clusters, (newClusters) => {
       if (newClusters && newClusters.length > 0) {
-        // Always reset to first cluster when data changes
         selectedClusterId.value = normalizeId(newClusters[0].id)
       }
     }, { immediate: true })
@@ -467,6 +497,8 @@ export default {
       selectedClusterId,
       activeCluster,
       searchQuery,
+      selectedProvince,
+      availableProvinces,
       sortBy,
       filteredMembers,
       paginatedMembers,
@@ -484,7 +516,7 @@ export default {
       isClusterActive,
       normalizeId,
       getClusterLabel,
-      getInterpretationIcon
+      resetFilters
     }
   }
 }
@@ -677,6 +709,43 @@ export default {
   color: #e53e3e;
 }
 
+/* NEW: Province Filter Styles */
+.province-filter-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 200px;
+}
+
+.province-filter-box label {
+  font-weight: 600;
+  color: #4a5568;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.province-select {
+  padding: 0.75rem 1rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  background: white;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  min-width: 180px;
+  font-weight: 500;
+}
+
+.province-select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.province-select:hover {
+  border-color: #cbd5e0;
+}
+
 .sort-box {
   display: flex;
   align-items: center;
@@ -756,7 +825,23 @@ export default {
 .no-results p {
   color: #718096;
   font-size: 1rem;
-  margin: 0;
+  margin: 0 0 1rem 0;
+}
+
+.btn-reset-filter {
+  padding: 0.5rem 1.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-reset-filter:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
 }
 
 /* Table Styles */
@@ -822,6 +907,17 @@ export default {
 
 .col-province {
   min-width: 150px;
+}
+
+.province-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  background: linear-gradient(135deg, #e6f7ff 0%, #f0f9ff 100%);
+  color: #2c5282;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border: 1px solid #90cdf4;
 }
 
 .col-ipm {
@@ -954,103 +1050,7 @@ export default {
   font-weight: 600;
 }
 
-.members-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1.5rem;
-}
-
-.member-card {
-  background: white;
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 1.5rem;
-  transition: all 0.3s ease;
-}
-
-.member-card:hover {
-  border-color: #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
-  transform: translateY(-2px);
-}
-
-.member-card h6 {
-  font-size: 1.1rem;
-  color: #2d3748;
-  margin-bottom: 0.5rem;
-  font-weight: 700;
-}
-
-.member-province {
-  font-size: 0.9rem;
-  color: #718096;
-  margin-bottom: 1rem;
-}
-
-.member-stats {
-  display: grid;
-  gap: 0.75rem;
-}
-
-.member-stat {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.5rem;
-  background: #f7fafc;
-  border-radius: 6px;
-}
-
-.member-stat span:first-child {
-  font-size: 0.9rem;
-  color: #4a5568;
-  font-weight: 500;
-}
-
-.member-stat span:last-child {
-  font-weight: 700;
-  color: #2d3748;
-}
-
-.membership-stat {
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.membership-bar-mini {
-  position: relative;
-  width: 100%;
-  height: 24px;
-  background: #e2e8f0;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.membership-fill-mini {
-  position: absolute;
-  left: 0;
-  top: 0;
-  height: 100%;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-  transition: width 0.3s ease;
-}
-
-.membership-text-mini {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 0.85rem;
-  font-weight: 700;
-  color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
-  z-index: 1;
-}
-
 @media (max-width: 768px) {
-  .members-grid {
-    grid-template-columns: 1fr;
-  }
-  
   .cluster-tabs {
     flex-direction: column;
   }
@@ -1064,21 +1064,27 @@ export default {
     align-items: stretch;
   }
 
-  .search-box {
+  .search-box,
+  .province-filter-box,
+  .sort-box,
+  .items-per-page-box {
     min-width: 100%;
   }
 
+  .province-filter-box,
   .sort-box,
   .items-per-page-box {
     flex-direction: column;
     align-items: stretch;
   }
 
+  .province-filter-box label,
   .sort-box label,
   .items-per-page-box label {
     font-size: 0.875rem;
   }
 
+  .province-select,
   .sort-select,
   .items-per-page-select {
     width: 100%;
@@ -1090,7 +1096,7 @@ export default {
   }
 
   .members-table {
-    min-width: 800px;
+    min-width: 900px;
   }
 
   .members-table th,
