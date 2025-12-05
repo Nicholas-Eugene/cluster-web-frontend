@@ -139,7 +139,7 @@
             <p>
               Penelitian ini bertujuan untuk mengidentifikasi pola dan karakteristik kemiskinan 
               di berbagai kabupaten/kota di Indonesia menggunakan pendekatan clustering dengan 
-              algoritma Fuzzy C-Means. Dengan menganalisis data IPM dan Garis Kemiskinan, 
+              algoritma Fuzzy C-Means dan OPTICS. Dengan menganalisis data IPM, Garis Kemiskinan, dan Pengeluaran Per Kapita 
               diharapkan dapat diperoleh insights yang berguna untuk:
             </p>
             
